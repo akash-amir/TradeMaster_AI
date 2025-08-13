@@ -1,0 +1,3 @@
+# Exclude legacy standalone admin builds so SPA routes work on Vercel
+public/admin/**
+admin/**
