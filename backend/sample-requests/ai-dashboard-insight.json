@@ -1,0 +1,165 @@
+{
+  "info": {
+    "name": "AI Dashboard Insight API",
+    "description": "Sample Postman requests for testing the AI dashboard insight endpoint",
+    "version": "1.0.0"
+  },
+  "requests": [
+    {
+      "name": "Get Dashboard Insight",
+      "method": "GET",
+      "url": "{{BASE_URL}}/api/ai/dashboard-insight",
+      "headers": [
+        {
+          "key": "Authorization",
+          "value": "Bearer {{JWT_TOKEN}}",
+          "description": "JWT token for authentication"
+        },
+        {
+          "key": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "description": "Fetch AI-generated dashboard insight based on user's recent trades",
+      "tests": [
+        "pm.test('Status code is 200', function () {",
+        "    pm.response.to.have.status(200);",
+        "});",
+        "",
+        "pm.test('Response has required fields', function () {",
+        "    const jsonData = pm.response.json();",
+        "    pm.expect(jsonData).to.have.property('success');",
+        "    pm.expect(jsonData).to.have.property('data');",
+        "    pm.expect(jsonData.data).to.have.property('insight');",
+        "    pm.expect(jsonData.data).to.have.property('tradesAnalyzed');",
+        "});",
+        "",
+        "pm.test('Insight has required structure', function () {",
+        "    const insight = pm.response.json().data.insight;",
+        "    pm.expect(insight).to.have.property('title');",
+        "    pm.expect(insight).to.have.property('content');",
+        "    pm.expect(insight).to.have.property('type');",
+        "});"
+      ]
+    },
+    {
+      "name": "Get Dashboard Insight (Refresh)",
+      "method": "GET",
+      "url": "{{BASE_URL}}/api/ai/dashboard-insight?refresh=true",
+      "headers": [
+        {
+          "key": "Authorization",
+          "value": "Bearer {{JWT_TOKEN}}",
+          "description": "JWT token for authentication"
+        },
+        {
+          "key": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "description": "Force refresh the AI dashboard insight",
+      "tests": [
+        "pm.test('Status code is 200', function () {",
+        "    pm.response.to.have.status(200);",
+        "});",
+        "",
+        "pm.test('Response indicates refresh', function () {",
+        "    const jsonData = pm.response.json();",
+        "    pm.expect(jsonData.success).to.be.true;",
+        "});"
+      ]
+    },
+    {
+      "name": "Get Dashboard Insight (No Auth - Should Fail)",
+      "method": "GET",
+      "url": "{{BASE_URL}}/api/ai/dashboard-insight",
+      "headers": [
+        {
+          "key": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "description": "Test endpoint without authentication - should return 401",
+      "tests": [
+        "pm.test('Status code is 401', function () {",
+        "    pm.response.to.have.status(401);",
+        "});",
+        "",
+        "pm.test('Error message present', function () {",
+        "    const jsonData = pm.response.json();",
+        "    pm.expect(jsonData).to.have.property('message');",
+        "});"
+      ]
+    }
+  ],
+  "variables": [
+    {
+      "key": "BASE_URL",
+      "value": "http://localhost:5000",
+      "description": "Base URL for the API"
+    },
+    {
+      "key": "JWT_TOKEN",
+      "value": "your-jwt-token-here",
+      "description": "Replace with actual JWT token from login"
+    }
+  ],
+  "instructions": {
+    "setup": [
+      "1. Import this collection into Postman",
+      "2. Set the BASE_URL variable to your server URL (default: http://localhost:5000)",
+      "3. Login to get a JWT token and set the JWT_TOKEN variable",
+      "4. Ensure you have some trades in your account for meaningful insights"
+    ],
+    "usage": [
+      "1. Use 'Get Dashboard Insight' for normal requests",
+      "2. Use 'Get Dashboard Insight (Refresh)' to force regenerate insights",
+      "3. The 'No Auth' request demonstrates proper error handling"
+    ],
+    "expectedResponses": {
+      "success": {
+        "success": true,
+        "data": {
+          "insight": {
+            "title": "Strong Performance This Week",
+            "content": "Your EUR/USD and GBP/USD trades showed excellent risk management...",
+            "score": 87,
+            "type": "positive",
+            "keyMetric": "Win Rate: 75%",
+            "suggestion": "Consider increasing position size on high-confidence setups",
+            "generatedAt": "2024-01-15T10:30:00.000Z"
+          },
+          "tradesAnalyzed": 5,
+          "generatedAt": "2024-01-15T10:30:00.000Z"
+        }
+      },
+      "noTrades": {
+        "success": true,
+        "data": {
+          "insight": {
+            "title": "Welcome to TradeMaster!",
+            "content": "Start by adding your first trade to get personalized AI insights...",
+            "score": null,
+            "type": "welcome"
+          },
+          "tradesAnalyzed": 0,
+          "generatedAt": "2024-01-15T10:30:00.000Z"
+        }
+      },
+      "error": {
+        "success": false,
+        "message": "Unable to generate insight. Try again later.",
+        "data": {
+          "insight": {
+            "title": "Analysis Unavailable",
+            "content": "We're experiencing technical difficulties...",
+            "score": null,
+            "type": "error"
+          },
+          "tradesAnalyzed": 0,
+          "generatedAt": "2024-01-15T10:30:00.000Z"
+        }
+      }
+    }
+  }
+}
