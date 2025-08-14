@@ -84,12 +84,11 @@ const Footer = () => {
         </div>
 
         {/* Bottom section */}
-        <div className="mt-12 pt-8 border-t border-gray-800 flex flex-col md:flex-row justify-between items-center">
+        <div className="mt-12 pt-8 border-t border-gray-800 flex flex-col md:flex-row justify-between items-center">  
           <p className="text-gray-400 text-sm">
             © 2024 TradeMaster AI. All rights reserved.
           </p>
           <div className="flex items-center space-x-6 mt-4 md:mt-0">
-            <span className="text-sm text-gray-400">Made with ❤️ for traders</span>
             <div className="flex items-center space-x-2">
               <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
               <span className="text-sm text-gray-400">All systems operational</span>
