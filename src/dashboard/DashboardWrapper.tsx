@@ -70,6 +70,8 @@ const DashboardWrapper = () => {
               <Route path="home" element={<Home />} />
               <Route path="log-trades" element={<LogTrades />} />
               <Route path="records" element={<Records />} />
+              {/** Legacy path support: redirect old trade-details URLs to new trade path */}
+              <Route path="trade-details/:id" element={<Navigate to="../trade/:id" replace />} />
               <Route path="trade/:id" element={<TradeDetails />} />
               <Route path="charts" element={<Charts />} />
               <Route path="ai-analysis" element={<AIAnalysis />} />

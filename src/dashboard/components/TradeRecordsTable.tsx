@@ -340,7 +340,7 @@ export default function TradeRecordsTable({
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() => navigate(`/dashboard/trade-details/${trade.id}`)}
+                              onClick={() => navigate(`/dashboard/trade/${trade.id}`)}
                               className="h-8 w-8 p-0 sm:h-auto sm:w-auto sm:px-2 sm:py-1"
                             >
                               <Eye className="h-3 w-3 sm:h-4 sm:w-4" />
