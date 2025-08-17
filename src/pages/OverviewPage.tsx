@@ -6,6 +6,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { Users, Crown, CreditCard, TrendingUp, TrendingDown, DollarSign, Activity, AlertTriangle } from 'lucide-react'
 import { formatCurrency, formatNumber } from '@/lib/utils'
 import { Skeleton } from '@/components/ui/skeleton'
+import { supabase } from '@/integrations/supabase/client'
 
 export default function OverviewPage() {
   const { data: stats, isLoading: statsLoading } = useQuery({
@@ -21,6 +22,38 @@ export default function OverviewPage() {
   const { data: revenueData, isLoading: revenueLoading } = useQuery({
     queryKey: ['revenue-data', '30d'],
     queryFn: () => adminApi.getRevenueData('30d'),
+  })
+
+  // Real total users from Supabase (counts rows in public.profiles)
+  const { data: totalUsersCount, isLoading: totalUsersLoading } = useQuery({
+    queryKey: ['supabase', 'profiles', 'count'],
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from('profiles')
+        .select('*', { count: 'exact', head: true })
+      if (error) {
+        // Surface in console for easier debugging
+        console.error('profiles count error', error)
+        throw error
+      }
+      return count ?? 0
+    },
+  })
+
+  // Prefer secure RPC if available: public.get_profiles_count() counts public.profiles
+  // Create in Supabase SQL editor:
+  // create or replace function public.get_profiles_count()
+  // returns bigint language sql security definer set search_path = public, extensions as $$
+  //   select count(*)::bigint from public.profiles;
+  // $$;
+  const { data: profilesCountRpc } = useQuery({
+    queryKey: ['supabase', 'rpc', 'get_profiles_count'],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any).rpc('get_profiles_count')
+      if (error) throw error
+      return (data as number) ?? 0
+    },
+    retry: 1,
   })
 
   const StatCard = ({ 
@@ -112,7 +145,7 @@ export default function OverviewPage() {
       <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
         <StatCard
           title="Total Users"
-          value={formatNumber(stats?.users.total || 0)}
+          value={formatNumber((profilesCountRpc ?? totalUsersCount) ?? 0)}
           description={`${stats?.users.active || 0} active users`}
           icon={Users}
           trend={stats?.users.growth > 0 ? 'up' : stats?.users.growth < 0 ? 'down' : 'neutral'}

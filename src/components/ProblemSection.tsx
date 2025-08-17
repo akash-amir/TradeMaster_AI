@@ -36,7 +36,8 @@ const ProblemSection = () => {
   return (
     <section className="section-spacing relative">
       <div className="max-w-7xl mx-auto container-padding">
-        <div className="text-center mb-20 animate-fade-in space-y-6">
+        {/* Reduce bottom margin on mobile to avoid large gap before features */}
+        <div className="text-center mb-10 md:mb-16 animate-fade-in space-y-6">
           <h2 className="text-4xl md:text-5xl lg:text-6xl font-semibold leading-tight text-white">
             Why Most Traders <span className="text-white/50">Struggle</span>
           </h2>
@@ -66,7 +67,8 @@ const ProblemSection = () => {
           ))}
         </div>
 
-        <div className="text-center mt-16">
+        {/* Reduce top margin before the closing line to tighten vertical rhythm on mobile */}
+        <div className="text-center mt-8 md:mt-12">
           <p className="text-2xl md:text-3xl font-medium text-white/70">
             There's a <span className="text-white">better way</span>
           </p>

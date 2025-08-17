@@ -41,7 +41,8 @@ const FeaturesSection = () => {
     <motion.section
       initial={{ opacity: 0, y: 40 }}
       whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, amount: 0.6 }}
+      // Trigger animation earlier on small screens so content doesn't appear hidden
+      viewport={{ once: true, amount: 0.2 }}
       transition={{ duration: 0.8, ease: 'easeOut' }}
       id="features" className="section-spacing"
     >
@@ -49,7 +50,7 @@ const FeaturesSection = () => {
         <motion.div
           initial="hidden"
           whileInView="visible"
-          viewport={{ once: true, amount: 0.7 }}
+          viewport={{ once: true, amount: 0.3 }}
           variants={{
             hidden: {},
             visible: { transition: { staggerChildren: 0.12 } }
@@ -79,7 +80,7 @@ const FeaturesSection = () => {
         <motion.div
           initial="hidden"
           whileInView="visible"
-          viewport={{ once: true, amount: 0.7 }}
+          viewport={{ once: true, amount: 0.3 }}
           variants={{
             hidden: {},
             visible: { transition: { staggerChildren: 0.10 } }

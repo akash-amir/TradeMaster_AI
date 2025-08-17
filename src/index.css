@@ -185,7 +185,8 @@
     @apply px-6 sm:px-8 lg:px-12 xl:px-16;
   }
   .section-spacing {
-    @apply py-32 lg:py-40;
+    /* Reduce vertical gaps on small screens; scale up progressively */
+    @apply py-16 sm:py-24 md:py-32 lg:py-40;
   }
   .accent-button {
     background: rgba(255, 255, 255, 0.05);
@@ -223,6 +224,14 @@
 
   .accent-glow {
     box-shadow: var(--shadow-accent);
+  }
+  /* Reduce animations/transitions for performance and accessibility */
+  @media (prefers-reduced-motion: reduce) {
+    * {
+      animation: none !important;
+      transition: none !important;
+      scroll-behavior: auto !important;
+    }
   }
   .gradient-text {
     background: var(--gradient-primary);

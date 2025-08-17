@@ -63,7 +63,7 @@ const DemoSection = () => {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, amount: 0.7 }}
           transition={{ duration: 0.8, ease: 'easeOut' }}
-          className="relative mb-10 animate-scale-in flex justify-center"
+          className="relative mb-6 md:mb-10 animate-scale-in flex justify-center"
         >
           <div className="premium-card rounded-xl sm:rounded-2xl p-1 sm:p-2 premium-hover max-w-screen-md w-full mx-auto aspect-video flex items-center justify-center relative overflow-hidden">
             <div className="relative w-full h-full rounded-xl overflow-hidden flex items-center justify-center aspect-video">
@@ -71,6 +71,9 @@ const DemoSection = () => {
                 src="https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?w=1400&h=800&fit=crop"
                 alt="TradeMaster AI Dashboard Demo"
                 className="w-full h-full object-cover opacity-80 aspect-video"
+                loading="lazy"
+                decoding="async"
+                referrerPolicy="no-referrer"
               />
               {/* Professional play button overlay */}
               <div className="absolute inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center group cursor-pointer hover:bg-black/30 transition-all duration-300">
@@ -111,8 +114,8 @@ const DemoSection = () => {
           </div>
         </motion.div>
 
-        {/* Premium device compatibility */}
-        <div className="text-center animate-fade-in space-y-10">
+        {/* Premium device compatibility (hide on mobile as requested) */}
+        <div className="hidden md:block text-center animate-fade-in space-y-10">
           <h3 className="text-2xl md:text-3xl font-medium text-white/70">
             Available on all your devices
           </h3>

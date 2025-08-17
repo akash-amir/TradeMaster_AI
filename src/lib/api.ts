@@ -22,7 +22,8 @@ api.interceptors.response.use(
   (error) => {
     if (error.response?.status === 401) {
       localStorage.removeItem('admin_token')
-      window.location.href = '/login'
+      // Redirect to the admin login route to match app routing
+      window.location.href = '/admin'
     }
     return Promise.reject(error)
   }
