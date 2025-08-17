@@ -153,11 +153,11 @@ const FinalCTASection = () => {
             className="mt-12 pt-8 border-t border-gray-800"
           >
             <p className="text-gray-400 mb-4">Trusted by traders worldwide</p>
-            <div className="flex justify-center items-center gap-8 text-gray-500">
+            <div className="flex flex-col sm:flex-row flex-wrap justify-center items-center gap-3 sm:gap-8 text-gray-500">
               <span className="font-semibold">SOC 2 Compliant</span>
-              <span>•</span>
+              <span className="hidden sm:inline">•</span>
               <span className="font-semibold">Bank-level Security</span>
-              <span>•</span>
+              <span className="hidden sm:inline">•</span>
               <span className="font-semibold">30-day Guarantee</span>
             </div>
           </motion.div>
