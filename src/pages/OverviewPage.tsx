@@ -56,6 +56,26 @@ export default function OverviewPage() {
     retry: 1,
   })
 
+  // Optional: counts auth.users via a SECURITY DEFINER RPC (requires you to create it in Supabase):
+  // create or replace function public.get_auth_users_count()
+  // returns bigint language sql security definer set search_path = public, auth as $$
+  //   select count(*)::bigint from auth.users;
+  // $$;
+  const { data: authUsersCountRpc } = useQuery({
+    queryKey: ['supabase', 'rpc', 'get_auth_users_count'],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any).rpc('get_auth_users_count')
+      if (error) throw error
+      return (data as number) ?? 0
+    },
+    retry: 1,
+  })
+
+  // Prefer admin-side total (auth.users) when available; otherwise fall back to profiles count
+  const totalUsersEffective = ((authUsersCountRpc ?? 0) > 0)
+    ? authUsersCountRpc
+    : ((profilesCountRpc ?? totalUsersCount) ?? 0)
+
   const StatCard = ({ 
     title, 
     value, 
@@ -145,11 +165,9 @@ export default function OverviewPage() {
       <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
         <StatCard
           title="Total Users"
-          value={formatNumber((profilesCountRpc ?? totalUsersCount) ?? 0)}
-          description={`${stats?.users.active || 0} active users`}
+          value={formatNumber(totalUsersEffective ?? 0)}
+          description={`Total registered users`}
           icon={Users}
-          trend={stats?.users.growth > 0 ? 'up' : stats?.users.growth < 0 ? 'down' : 'neutral'}
-          trendValue={`${stats?.users.growth || 0}% this month`}
         />
         
         <StatCard
