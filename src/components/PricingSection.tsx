@@ -122,9 +122,9 @@ const PricingSection = () => {
                 hidden: { opacity: 0, y: 40 },
                 visible: { opacity: 1, y: 0, transition: { duration: 0.7, ease: 'easeOut' } }
               }}
-              className={`relative bg-dark-card rounded-2xl sm:rounded-3xl p-4 sm:p-5 border transition-all duration-300 animate-scale-in ${
+              className={`relative bg-dark-card rounded-2xl sm:rounded-3xl p-4 sm:p-5 border transition-all duration-300 animate-scale-in shadow-none ring-0 ${
                 plan.popular 
-                  ? 'border-primary glow-effect sm:transform sm:scale-105' 
+                  ? 'border-primary sm:transform sm:scale-105' 
                   : 'border-gray-800 hover:border-primary/50'
               } overflow-visible`}
               style={{ animationDelay: `${index * 0.1}s` }}
@@ -159,7 +159,7 @@ const PricingSection = () => {
                 onClick={() => window.location.href = '/dashboard'}
                 className={`w-full py-2 text-sm font-semibold ${
                   plan.popular
-                    ? 'bg-primary hover:bg-primary-dark text-dark glow-effect'
+                    ? 'bg-primary hover:bg-primary-dark text-dark'
                     : 'bg-transparent border border-primary text-primary hover:bg-primary hover:text-dark'
                 }`}
               >
@@ -172,14 +172,7 @@ const PricingSection = () => {
                   'Choose Plan'
                 )}
               </Button>
-              {/* Shine/gloss animation overlay */}
-              <motion.div
-                initial={{ x: '-100%' }}
-                animate={{ x: ['-100%', '120%'] }}
-                transition={{ duration: 1.2, delay: 0.5 + index * 0.1, ease: 'easeInOut' }}
-                className="absolute top-0 left-0 w-full h-full pointer-events-none"
-                style={{ background: 'linear-gradient(120deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.18) 60%, rgba(255,255,255,0.08) 100%)', filter: 'blur(2px)', opacity: 0.7 }}
-              />
+              {/* Removed gloss overlay to avoid perceived shadow/glow */}
             </motion.div>
           ))}
         </motion.div>

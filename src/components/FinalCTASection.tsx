@@ -10,7 +10,8 @@ const FinalCTASection = () => {
     <motion.section
       initial={{ opacity: 0, y: 40 }}
       whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, amount: 0.6 }}
+      // Trigger earlier on mobile so it becomes visible reliably
+      viewport={{ once: true, amount: 0.2 }}
       className="py-16 bg-gradient-to-br from-dark via-dark-lighter to-dark relative overflow-hidden"
       transition={{ duration: 0.8, ease: 'easeOut' }}
     >
@@ -23,7 +24,7 @@ const FinalCTASection = () => {
         <motion.div
           initial="hidden"
           whileInView="visible"
-          viewport={{ once: true, amount: 0.7 }}
+          viewport={{ once: true, amount: 0.3 }}
           variants={{
             hidden: {},
             visible: { transition: { staggerChildren: 0.12 } }
