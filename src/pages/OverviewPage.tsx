@@ -24,6 +24,52 @@ export default function OverviewPage() {
     queryFn: () => adminApi.getRevenueData('30d'),
   })
 
+  // Active API keys (RPC preferred, fallback to SELECT count)
+  const { data: activeApiKeysCount } = useQuery({
+    queryKey: ['supabase', 'user_api_keys', 'active_count'],
+    queryFn: async () => {
+      // Preferred: SECURITY DEFINER RPC get_active_api_keys_count()
+      try {
+        const { data, error } = await (supabase as any).rpc('get_active_api_keys_count')
+        if (error) throw error
+        return Number(data ?? 0)
+      } catch (e) {
+        // Fallback: HEAD select with exact count
+        const { count, error: e2 } = await (supabase as any)
+          .from('user_api_keys')
+          .select('*', { count: 'exact', head: true })
+          .eq('status', 'active')
+        if (e2) throw e2
+        return count ?? 0
+      }
+    },
+    staleTime: 60_000,
+  })
+
+  // Total revenue from Supabase (RPC with fallback to client-side sum)
+  const { data: totalRevenue, isLoading: totalRevenueLoading } = useQuery({
+    queryKey: ['supabase', 'subscription', 'total_revenue'],
+    queryFn: async () => {
+      // Preferred: RPC get_total_revenue()
+      try {
+        const { data, error } = await (supabase as any).rpc('get_total_revenue')
+        if (error) throw error
+        return Number(data ?? 0)
+      } catch (e) {
+        // Fallback: fetch rows and sum in JS
+        const { data: rows, error: e2 } = await (supabase as any)
+          .from('subscription')
+          .select('amount')
+        if (e2) throw e2
+        const total = (rows ?? []).reduce((acc: number, r: any) => {
+          return acc + Number(r?.amount ?? 0)
+        }, 0)
+        return total
+      }
+    },
+    staleTime: 60_000,
+  })
+
   // Real total users from Supabase (counts rows in public.profiles)
   const { data: totalUsersCount, isLoading: totalUsersLoading } = useQuery({
     queryKey: ['supabase', 'profiles', 'count'],
@@ -172,20 +218,18 @@ export default function OverviewPage() {
         
         <StatCard
           title="Monthly Revenue"
-          value={formatCurrency(stats?.subscriptions.revenue || 0)}
-          description="From subscriptions"
+          value={formatCurrency(totalRevenue || 0)}
+          description="Total revenue from subscriptions"
           icon={DollarSign}
-          trend={stats?.subscriptions.growth > 0 ? 'up' : stats?.subscriptions.growth < 0 ? 'down' : 'neutral'}
-          trendValue={`${stats?.subscriptions.growth || 0}% vs last month`}
+          trend={undefined}
+          trendValue={undefined}
         />
         
         <StatCard
-          title="API Requests"
-          value={formatNumber(stats?.apiUsage.totalRequests || 0)}
-          description="This month"
+          title="Active API Keys"
+          value={formatNumber(activeApiKeysCount || 0)}
+          description="Keys currently active"
           icon={Activity}
-          trend="up"
-          trendValue="12% vs last month"
         />
         
         <StatCard
