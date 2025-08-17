@@ -126,11 +126,11 @@ const PricingSection = () => {
                 plan.popular 
                   ? 'border-primary glow-effect sm:transform sm:scale-105' 
                   : 'border-gray-800 hover:border-primary/50'
-              } overflow-hidden`}
+              } overflow-visible`}
               style={{ animationDelay: `${index * 0.1}s` }}
             >
               {plan.popular && (
-                <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
+                <div className="absolute -top-4 left-1/2 transform -translate-x-1/2 z-10">
                   <div className="bg-primary text-dark px-5 py-1.5 rounded-full text-xs font-bold">
                     Most Popular
                   </div>
