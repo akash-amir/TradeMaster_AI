@@ -1,6 +1,6 @@
-import { useState } from 'react'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { adminApi } from '@/lib/api'
+import { useState, useMemo } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import { supabase } from '@/lib/supabase'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -14,139 +14,77 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from '@/components/ui/alert-dialog'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
 import { useToast } from '@/hooks/use-toast'
-import { MoreHorizontal, Search, UserCheck, UserX, RotateCcw, Eye, Download } from 'lucide-react'
+import { Search, Download } from 'lucide-react'
 import { formatDate, getInitials } from '@/lib/utils'
-import type { User } from '@/types'
+
+type ProfileRow = {
+  id: string
+  email: string | null
+  display_name: string | null
+  full_name: string | null
+  avatar_url: string | null
+  created_at?: string | null
+}
 
 export default function UsersPage() {
   const { toast } = useToast()
-  const queryClient = useQueryClient()
   const [search, setSearch] = useState('')
-  const [statusFilter, setStatusFilter] = useState('all')
-  const [planFilter, setPlanFilter] = useState('all')
   const [page, setPage] = useState(1)
+  const limit = 20
 
-  const { data: usersData, isLoading } = useQuery({
-    queryKey: ['users', { search, statusFilter, planFilter, page }],
-    queryFn: () => adminApi.getUsers({
-      search: search || undefined,
-      status: statusFilter !== 'all' ? statusFilter : undefined,
-      plan: planFilter !== 'all' ? planFilter : undefined,
-      page,
-      limit: 20,
-    }),
+  const queryKey = useMemo(() => ['users_supabase', { search, page, limit }], [search, page])
+
+  const { data, isLoading, isError, error } = useQuery({
+    queryKey,
+    queryFn: async () => {
+      const from = (page - 1) * limit
+      const to = from + limit - 1
+
+      let query = supabase
+        .from('profiles_with_email')
+        .select('id,email,display_name,full_name,avatar_url,created_at', { count: 'exact' })
+        .order('created_at', { ascending: false })
+
+      if (search?.trim()) {
+        const term = `%${search.trim()}%`
+        // Use or() to search multiple columns
+        query = query.or(
+          `email.ilike.${term},display_name.ilike.${term},full_name.ilike.${term}`
+        ) as any
+      }
+
+      const { data, error, count } = await query.range(from, to)
+      if (error) throw error
+      return { users: (data as ProfileRow[]) || [], totalCount: count || 0 }
+    },
+    keepPreviousData: true,
+    staleTime: 30_000,
   })
 
-  const suspendUserMutation = useMutation({
-    mutationFn: ({ userId, reason }: { userId: string; reason?: string }) =>
-      adminApi.suspendUser(userId, reason),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['users'] })
-      toast({
-        title: 'User suspended',
-        description: 'User has been successfully suspended.',
-      })
-    },
-    onError: (error: any) => {
-      toast({
-        title: 'Error',
-        description: error.response?.data?.message || 'Failed to suspend user',
-        variant: 'destructive',
-      })
-    },
-  })
-
-  const activateUserMutation = useMutation({
-    mutationFn: adminApi.activateUser,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['users'] })
-      toast({
-        title: 'User activated',
-        description: 'User has been successfully activated.',
-      })
-    },
-    onError: (error: any) => {
-      toast({
-        title: 'Error',
-        description: error.response?.data?.message || 'Failed to activate user',
-        variant: 'destructive',
-      })
-    },
-  })
-
-  const resetPasswordMutation = useMutation({
-    mutationFn: adminApi.resetUserPassword,
-    onSuccess: () => {
-      toast({
-        title: 'Password reset',
-        description: 'Password reset email has been sent to the user.',
-      })
-    },
-    onError: (error: any) => {
-      toast({
-        title: 'Error',
-        description: error.response?.data?.message || 'Failed to reset password',
-        variant: 'destructive',
-      })
-    },
-  })
-
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'active':
-        return <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300">Active</Badge>
-      case 'suspended':
-        return <Badge variant="destructive">Suspended</Badge>
-      case 'pending':
-        return <Badge variant="secondary">Pending</Badge>
-      default:
-        return <Badge variant="outline">{status}</Badge>
-    }
-  }
-
-  const getPlanBadge = (plan: string) => {
-    switch (plan) {
-      case 'free':
-        return <Badge variant="outline">Free</Badge>
-      case 'premium':
-        return <Badge className="bg-primary text-primary-foreground">Premium</Badge>
-      case 'professional':
-        return <Badge className="bg-blue-600 text-white">Professional</Badge>
-      default:
-        return <Badge variant="outline">{plan}</Badge>
-    }
-  }
+  // Note: status/plan not part of profiles_with_email by default; we focus on identity fields as requested
 
   const handleExport = async () => {
     try {
-      const blob = await adminApi.exportData('users', 'csv')
+      // Export current filtered page as CSV from client
+      const from = (page - 1) * limit
+      const to = from + limit - 1
+      let query = supabase
+        .from('profiles_with_email')
+        .select('id,email,display_name,full_name,avatar_url,created_at')
+        .order('created_at', { ascending: false })
+        .range(from, to)
+
+      if (search?.trim()) {
+        const term = `%${search.trim()}%`
+        query = query.or(`email.ilike.${term},display_name.ilike.${term},full_name.ilike.${term}`) as any
+      }
+      const { data: rows, error } = await query
+      if (error) throw error
+
+      const header = ['id','email','display_name','full_name','avatar_url','created_at']
+      const lines = [header.join(','), ...(rows || []).map(r => header.map(h => JSON.stringify((r as any)[h] ?? '')).join(','))]
+      const blob = new Blob([lines.join('\n')], { type: 'text/csv' })
       const url = window.URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
@@ -155,17 +93,9 @@ export default function UsersPage() {
       a.click()
       window.URL.revokeObjectURL(url)
       document.body.removeChild(a)
-      
-      toast({
-        title: 'Export successful',
-        description: 'Users data has been exported to CSV.',
-      })
-    } catch (error) {
-      toast({
-        title: 'Export failed',
-        description: 'Failed to export users data.',
-        variant: 'destructive',
-      })
+      toast({ title: 'Export successful', description: 'Users exported.' })
+    } catch (err: any) {
+      toast({ title: 'Export failed', description: err.message || 'Failed to export', variant: 'destructive' })
     }
   }
 
@@ -183,44 +113,22 @@ export default function UsersPage() {
         </Button>
       </div>
 
-      {/* Filters */}
+      {/* Search */}
       <Card>
         <CardHeader>
-          <CardTitle>Filters</CardTitle>
+          <CardTitle>Search</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex flex-col sm:flex-row gap-4">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Search users by email or name..."
+                placeholder="Search by email, display name, or full name..."
                 value={search}
-                onChange={(e) => setSearch(e.target.value)}
+                onChange={(e) => { setSearch(e.target.value); setPage(1) }}
                 className="pl-10"
               />
             </div>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Filter by status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="active">Active</SelectItem>
-                <SelectItem value="suspended">Suspended</SelectItem>
-                <SelectItem value="pending">Pending</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={planFilter} onValueChange={setPlanFilter}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Filter by plan" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Plans</SelectItem>
-                <SelectItem value="free">Free</SelectItem>
-                <SelectItem value="premium">Premium</SelectItem>
-                <SelectItem value="professional">Professional</SelectItem>
-              </SelectContent>
-            </Select>
           </div>
         </CardContent>
       </Card>
@@ -230,16 +138,18 @@ export default function UsersPage() {
         <CardHeader>
           <CardTitle>User Accounts</CardTitle>
           <CardDescription>
-            {usersData?.pagination.totalCount || 0} total users
+            {data?.totalCount || 0} total users
           </CardDescription>
         </CardHeader>
         <CardContent>
+          {isError && (
+            <div className="p-4 text-sm text-destructive bg-destructive/10 rounded">{(error as any)?.message || 'Failed to load users'}</div>
+          )}
           <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>User</TableHead>
-                <TableHead>Plan</TableHead>
-                <TableHead>Status</TableHead>
+                <TableHead>Identity</TableHead>
                 <TableHead>Activity</TableHead>
                 <TableHead>Joined</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
@@ -249,6 +159,7 @@ export default function UsersPage() {
               {isLoading ? (
                 Array.from({ length: 5 }).map((_, i) => (
                   <TableRow key={i}>
+                    {/* User */}
                     <TableCell>
                       <div className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded-full bg-muted animate-pulse" />
@@ -258,99 +169,49 @@ export default function UsersPage() {
                         </div>
                       </div>
                     </TableCell>
-                    <TableCell><div className="w-16 h-4 bg-muted rounded animate-pulse" /></TableCell>
-                    <TableCell><div className="w-16 h-4 bg-muted rounded animate-pulse" /></TableCell>
+                    {/* Identity */}
+                    <TableCell><div className="w-24 h-4 bg-muted rounded animate-pulse" /></TableCell>
+                    {/* Activity */}
+                    <TableCell><div className="w-28 h-4 bg-muted rounded animate-pulse" /></TableCell>
+                    {/* Joined */}
                     <TableCell><div className="w-20 h-4 bg-muted rounded animate-pulse" /></TableCell>
-                    <TableCell><div className="w-20 h-4 bg-muted rounded animate-pulse" /></TableCell>
+                    {/* Actions */}
                     <TableCell><div className="w-8 h-4 bg-muted rounded animate-pulse ml-auto" /></TableCell>
                   </TableRow>
                 ))
               ) : (
-                usersData?.users.map((user: User) => (
+                (data?.users || []).map((user: ProfileRow) => (
                   <TableRow key={user.id}>
+                    {/* User */}
                     <TableCell>
                       <div className="flex items-center gap-3">
                         <Avatar className="h-8 w-8">
-                          <AvatarImage src={user.avatar} />
+                          <AvatarImage src={user.avatar_url || undefined} />
                           <AvatarFallback className="bg-primary/10 text-primary">
-                            {getInitials(user.displayName)}
+                            {getInitials(user.display_name || user.full_name || user.email || '')}
                           </AvatarFallback>
                         </Avatar>
                         <div>
-                          <div className="font-medium">{user.displayName}</div>
-                          <div className="text-sm text-muted-foreground">{user.email}</div>
+                          <div className="font-medium">{user.display_name || user.full_name || '—'}</div>
+                          <div className="text-sm text-muted-foreground">{user.email || '—'}</div>
                         </div>
                       </div>
                     </TableCell>
-                    <TableCell>{getPlanBadge(user.subscription.plan)}</TableCell>
-                    <TableCell>{getStatusBadge(user.status)}</TableCell>
+                    {/* Identity */}
                     <TableCell>
-                      <div className="text-sm">
-                        <div>{user.metadata?.totalTrades || 0} trades</div>
-                        <div className="text-muted-foreground">
-                          {user.lastLogin ? `Active ${formatDate(user.lastLogin)}` : 'Never logged in'}
-                        </div>
+                      <div className="text-sm text-muted-foreground">
+                        {user.full_name || user.display_name || '—'}
                       </div>
                     </TableCell>
+                    {/* Activity */}
+                    <TableCell className="text-sm text-muted-foreground">—</TableCell>
+                    {/* Joined */}
                     <TableCell className="text-sm text-muted-foreground">
-                      {formatDate(user.createdAt)}
+                      {user.created_at ? formatDate(user.created_at) : '—'}
                     </TableCell>
+                    {/* Actions */}
                     <TableCell className="text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" className="h-8 w-8 p-0">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                          <DropdownMenuItem>
-                            <Eye className="mr-2 h-4 w-4" />
-                            View Details
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          {user.status === 'active' ? (
-                            <AlertDialog>
-                              <AlertDialogTrigger asChild>
-                                <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
-                                  <UserX className="mr-2 h-4 w-4" />
-                                  Suspend User
-                                </DropdownMenuItem>
-                              </AlertDialogTrigger>
-                              <AlertDialogContent>
-                                <AlertDialogHeader>
-                                  <AlertDialogTitle>Suspend User</AlertDialogTitle>
-                                  <AlertDialogDescription>
-                                    Are you sure you want to suspend {user.displayName}? They will lose access to their account.
-                                  </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                  <AlertDialogAction
-                                    onClick={() => suspendUserMutation.mutate({ userId: user.id })}
-                                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                                  >
-                                    Suspend
-                                  </AlertDialogAction>
-                                </AlertDialogFooter>
-                              </AlertDialogContent>
-                            </AlertDialog>
-                          ) : (
-                            <DropdownMenuItem
-                              onClick={() => activateUserMutation.mutate(user.id)}
-                            >
-                              <UserCheck className="mr-2 h-4 w-4" />
-                              Activate User
-                            </DropdownMenuItem>
-                          )}
-                          <DropdownMenuItem
-                            onClick={() => resetPasswordMutation.mutate(user.id)}
-                          >
-                            <RotateCcw className="mr-2 h-4 w-4" />
-                            Reset Password
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                      {/* Placeholder for future actions */}
                     </TableCell>
                   </TableRow>
                 ))
@@ -359,10 +220,15 @@ export default function UsersPage() {
           </Table>
 
           {/* Pagination */}
-          {usersData?.pagination && (
+          {data && (
             <div className="flex items-center justify-between mt-4">
               <div className="text-sm text-muted-foreground">
-                Showing {((page - 1) * 20) + 1} to {Math.min(page * 20, usersData.pagination.totalCount)} of {usersData.pagination.totalCount} users
+                {(() => {
+                  const total = data.totalCount
+                  const start = total === 0 ? 0 : (page - 1) * limit + 1
+                  const end = Math.min(page * limit, total)
+                  return `Showing ${start} to ${end} of ${total} users`
+                })()}
               </div>
               <div className="flex gap-2">
                 <Button
@@ -377,7 +243,7 @@ export default function UsersPage() {
                   variant="outline"
                   size="sm"
                   onClick={() => setPage(p => p + 1)}
-                  disabled={page >= usersData.pagination.totalPages}
+                  disabled={page * limit >= (data.totalCount || 0)}
                 >
                   Next
                 </Button>

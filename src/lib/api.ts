@@ -201,13 +201,34 @@ export const adminApi = {
       }
     ]
     
+    const search = params?.search?.toLowerCase().trim()
+    const status = params?.status?.toLowerCase().trim()
+    const plan = params?.plan?.toLowerCase().trim()
+
+    const filtered = mockUsers.filter(u => {
+      const matchesSearch = !search ||
+        u.email.toLowerCase().includes(search) ||
+        u.displayName.toLowerCase().includes(search) ||
+        `${u.firstName} ${u.lastName}`.toLowerCase().includes(search)
+      const matchesStatus = !status || u.status.toLowerCase() === status
+      const matchesPlan = !plan || u.subscription?.plan?.toLowerCase() === plan
+      return matchesSearch && matchesStatus && matchesPlan
+    })
+
+    const page = params?.page || 1
+    const limit = params?.limit || 10
+    const start = (page - 1) * limit
+    const users = filtered.slice(start, start + limit)
+    const totalCount = filtered.length
+    const totalPages = Math.max(1, Math.ceil(totalCount / limit))
+
     return {
-      users: mockUsers,
+      users,
       pagination: {
-        totalCount: 2847,
-        page: params?.page || 1,
-        limit: params?.limit || 10,
-        totalPages: Math.ceil(2847 / (params?.limit || 10))
+        totalCount,
+        page,
+        limit,
+        totalPages,
       }
     }
   },
@@ -298,13 +319,29 @@ export const adminApi = {
       }
     ]
     
+    const status = params?.status?.toLowerCase().trim()
+    const plan = params?.plan?.toLowerCase().trim()
+
+    const filtered = mockSubscriptions.filter(s => {
+      const matchesStatus = !status || s.status.toLowerCase() === status
+      const matchesPlan = !plan || s.plan.toLowerCase() === plan
+      return matchesStatus && matchesPlan
+    })
+
+    const page = params?.page || 1
+    const limit = params?.limit || 10
+    const start = (page - 1) * limit
+    const subscriptions = filtered.slice(start, start + limit)
+    const totalCount = filtered.length
+    const totalPages = Math.max(1, Math.ceil(totalCount / limit))
+
     return {
-      subscriptions: mockSubscriptions,
+      subscriptions,
       pagination: {
-        totalCount: 1256,
-        page: params?.page || 1,
-        limit: params?.limit || 10,
-        totalPages: Math.ceil(1256 / (params?.limit || 10))
+        totalCount,
+        page,
+        limit,
+        totalPages,
       }
     }
   },
@@ -373,13 +410,34 @@ export const adminApi = {
       }
     ]
     
+    const status = params?.status?.toLowerCase().trim()
+    const userId = params?.userId?.trim()
+    const from = params?.dateFrom ? new Date(params.dateFrom) : undefined
+    const to = params?.dateTo ? new Date(params.dateTo) : undefined
+
+    const filtered = mockPayments.filter(p => {
+      const matchesStatus = !status || p.status.toLowerCase() === status
+      const matchesUser = !userId || p.userId === userId
+      const createdAt = new Date(p.createdAt)
+      const matchesFrom = !from || createdAt >= from
+      const matchesTo = !to || createdAt <= to
+      return matchesStatus && matchesUser && matchesFrom && matchesTo
+    })
+
+    const page = params?.page || 1
+    const limit = params?.limit || 10
+    const start = (page - 1) * limit
+    const payments = filtered.slice(start, start + limit)
+    const totalCount = filtered.length
+    const totalPages = Math.max(1, Math.ceil(totalCount / limit))
+
     return {
-      payments: mockPayments,
+      payments,
       pagination: {
-        totalCount: 1198,
-        page: params?.page || 1,
-        limit: params?.limit || 10,
-        totalPages: Math.ceil(1198 / (params?.limit || 10))
+        totalCount,
+        page,
+        limit,
+        totalPages,
       }
     }
   },
