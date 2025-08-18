@@ -6,7 +6,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { Users, Crown, CreditCard, TrendingUp, TrendingDown, DollarSign, Activity, AlertTriangle } from 'lucide-react'
 import { formatCurrency, formatNumber } from '@/lib/utils'
 import { Skeleton } from '@/components/ui/skeleton'
-import { supabase } from '@/integrations/supabase/client'
+import { supabase } from '@/lib/supabase'
 
 export default function OverviewPage() {
   const { data: stats, isLoading: statsLoading } = useQuery({
@@ -28,32 +28,40 @@ export default function OverviewPage() {
   const { data: paymentSuccessStats } = useQuery({
     queryKey: ['supabase', 'payments', 'success_percentage'],
     queryFn: async () => {
-      // Helper to count with fallback if table name differs
-      const countFrom = async (table: string, status?: string) => {
-        let q = (supabase as any)
-          .from(table)
-          .select('*', { count: 'exact', head: true })
-        if (status) q = q.eq('status', status)
-        const { count, error } = await q
-        if (error) throw error
-        return count ?? 0
-      }
+      const SUCCESS_STATUSES = ['success', 'succeeded', 'paid']
+      const CANDIDATE_SOURCES = ['payments_with_email', 'payments']
 
-      let total = 0
-      let success = 0
-      try {
-        // Try plural 'payments'
-        total = await countFrom('payments')
-        success = await countFrom('payments', 'succeeded')
-      } catch (_) {
-        // Fallback to singular 'payment'
-        total = await countFrom('payment')
-        success = await countFrom('payment', 'succeeded')
+      // Try each candidate source until one works
+      let lastErr: any = null
+      for (const src of CANDIDATE_SOURCES) {
+        try {
+          const totalQ = (supabase as any)
+            .from(src)
+            .select('id', { count: 'exact' })
+            .limit(1)
+          const succQ = (supabase as any)
+            .from(src)
+            .select('id', { count: 'exact' })
+            .in('status', SUCCESS_STATUSES)
+            .limit(1)
+          const [totalRes, succRes] = await Promise.all([totalQ, succQ])
+          const total = totalRes.count || 0
+          const success = succRes.count || 0
+          const percentage = total > 0 ? (success / total) * 100 : 0
+          const failed = Math.max(total - success, 0)
+          return { total, success, failed, percentage }
+        } catch (e: any) {
+          const notFound = e?.code === 'PGRST302' || e?.status === 404 || /relation .* does not exist/i.test(e?.message || '')
+          if (notFound) {
+            lastErr = e
+            continue
+          }
+          throw e
+        }
       }
-
-      const percentage = total > 0 ? (success / total) * 100 : 0
-      const failed = Math.max(total - success, 0)
-      return { total, success, failed, percentage }
+      // If none worked, throw a helpful error
+      const msg = 'No payments source found for dashboard. Tried: ' + CANDIDATE_SOURCES.join(', ')
+      throw Object.assign(new Error(msg), { cause: lastErr })
     },
     staleTime: 60_000,
   })
@@ -71,8 +79,9 @@ export default function OverviewPage() {
         // Fallback: HEAD select with exact count
         const { count, error: e2 } = await (supabase as any)
           .from('user_api_keys')
-          .select('*', { count: 'exact', head: true })
-          .eq('status', 'active')
+          .select('id', { count: 'exact' })
+          .eq('is_active', true)
+          .limit(1)
         if (e2) throw e2
         return count ?? 0
       }
