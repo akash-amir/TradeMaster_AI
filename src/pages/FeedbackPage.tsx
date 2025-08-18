@@ -50,7 +50,21 @@ import {
 import { useToast } from '@/hooks/use-toast'
 import { MoreHorizontal, MessageSquare, Flag, Trash2, Eye, Search, Brain, Target, Lightbulb } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
-import type { FeedbackLog } from '@/types'
+// Local type for feedback items used on this page
+type FeedbackLog = {
+  id: string
+  userId: string
+  tradeId: string
+  type: 'ai_analysis' | 'trade_feedback' | 'strategy_suggestion' | string
+  content: string
+  confidence: number
+  status: 'processed' | 'flagged' | 'deleted' | string
+  createdAt: string
+  user: {
+    email: string
+    displayName: string
+  }
+}
 
 export default function FeedbackPage() {
   const { toast } = useToast()
@@ -149,7 +163,7 @@ export default function FeedbackPage() {
   }
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="space-y-6 animate-fade-in w-full max-w-full box-border">
       {/* Header */}
       <div>
         <h1 className="text-3xl font-bold text-foreground">AI Feedback & Logs</h1>
@@ -157,7 +171,8 @@ export default function FeedbackPage() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid gap-4 md:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 w-full max-w-full box-border">
+
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Feedback</CardTitle>
@@ -168,7 +183,7 @@ export default function FeedbackPage() {
             <p className="text-xs text-muted-foreground">All time</p>
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">AI Analyses</CardTitle>
@@ -181,7 +196,7 @@ export default function FeedbackPage() {
             <p className="text-xs text-muted-foreground">This month</p>
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Flagged Items</CardTitle>
@@ -194,7 +209,7 @@ export default function FeedbackPage() {
             <p className="text-xs text-muted-foreground">Requires review</p>
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Avg. Confidence</CardTitle>
@@ -202,7 +217,7 @@ export default function FeedbackPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {feedbackData?.feedback.length > 0 
+              {feedbackData?.feedback.length > 0
                 ? Math.round(feedbackData.feedback.reduce((sum: number, f: FeedbackLog) => sum + f.confidence, 0) / feedbackData.feedback.length)
                 : 0}%
             </div>
@@ -212,23 +227,23 @@ export default function FeedbackPage() {
       </div>
 
       {/* Filters */}
-      <Card>
+      <Card className="w-full max-w-full box-border">
         <CardHeader>
           <CardTitle>Filters</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-col sm:flex-row gap-4">
+          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 w-full max-w-full box-border">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="Search by user email..."
                 value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="pl-10"
+                onChange={(e) => { setSearch(e.target.value); setPage(1) }}
+                className="pl-10 w-full max-w-full box-border"
               />
             </div>
-            <Select value={typeFilter} onValueChange={setTypeFilter}>
-              <SelectTrigger className="w-[180px]">
+            <Select value={typeFilter} onValueChange={(v) => { setTypeFilter(v); setPage(1) }}>
+              <SelectTrigger className="w-full sm:w-[180px]">
                 <SelectValue placeholder="Filter by type" />
               </SelectTrigger>
               <SelectContent>
@@ -238,8 +253,8 @@ export default function FeedbackPage() {
                 <SelectItem value="strategy_suggestion">Strategy</SelectItem>
               </SelectContent>
             </Select>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-[180px]">
+            <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setPage(1) }}>
+              <SelectTrigger className="w-full sm:w-[180px]">
                 <SelectValue placeholder="Filter by status" />
               </SelectTrigger>
               <SelectContent>
@@ -253,172 +268,175 @@ export default function FeedbackPage() {
       </Card>
 
       {/* Feedback Table */}
-      <Card>
+      <Card className="w-full max-w-full box-border">
         <CardHeader>
           <CardTitle>Feedback Logs</CardTitle>
           <CardDescription>
             {feedbackData?.pagination.totalCount || 0} total feedback entries
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>User</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead>Content Preview</TableHead>
-                <TableHead>Confidence</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Date</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {isLoading ? (
-                Array.from({ length: 5 }).map((_, i) => (
-                  <TableRow key={i}>
-                    <TableCell><div className="w-32 h-4 bg-muted rounded animate-pulse" /></TableCell>
-                    <TableCell><div className="w-24 h-4 bg-muted rounded animate-pulse" /></TableCell>
-                    <TableCell><div className="w-40 h-4 bg-muted rounded animate-pulse" /></TableCell>
-                    <TableCell><div className="w-16 h-4 bg-muted rounded animate-pulse" /></TableCell>
-                    <TableCell><div className="w-16 h-4 bg-muted rounded animate-pulse" /></TableCell>
-                    <TableCell><div className="w-20 h-4 bg-muted rounded animate-pulse" /></TableCell>
-                    <TableCell><div className="w-8 h-4 bg-muted rounded animate-pulse ml-auto" /></TableCell>
-                  </TableRow>
-                ))
-              ) : (
-                feedbackData?.feedback.map((feedback: FeedbackLog) => (
-                  <TableRow key={feedback.id}>
-                    <TableCell>
-                      <div>
-                        <div className="font-medium">{feedback.user.displayName}</div>
-                        <div className="text-sm text-muted-foreground">{feedback.user.email}</div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        {getTypeIcon(feedback.type)}
-                        {getTypeBadge(feedback.type)}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="max-w-[300px] truncate text-sm">
-                        {feedback.content}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <div className="text-sm font-medium">{Math.round(feedback.confidence * 100)}%</div>
-                        <div className={`w-2 h-2 rounded-full ${
-                          feedback.confidence > 0.8 ? 'bg-green-500' :
-                          feedback.confidence > 0.6 ? 'bg-yellow-500' :
-                          'bg-red-500'
-                        }`} />
-                      </div>
-                    </TableCell>
-                    <TableCell>{getStatusBadge(feedback.status)}</TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
-                      {formatDate(feedback.createdAt)}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" className="h-8 w-8 p-0">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                          <Dialog>
-                            <DialogTrigger asChild>
-                              <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
-                                <Eye className="mr-2 h-4 w-4" />
-                                View Full Content
-                              </DropdownMenuItem>
-                            </DialogTrigger>
-                            <DialogContent className="max-w-2xl">
-                              <DialogHeader>
-                                <DialogTitle className="flex items-center gap-2">
-                                  {getTypeIcon(feedback.type)}
-                                  Feedback Details
-                                </DialogTitle>
-                                <DialogDescription>
-                                  {feedback.type.replace('_', ' ')} from {feedback.user.displayName}
-                                </DialogDescription>
-                              </DialogHeader>
-                              <div className="space-y-4">
-                                <div>
-                                  <h4 className="font-medium mb-2">Content</h4>
-                                  <div className="p-4 bg-muted/50 rounded-lg text-sm">
-                                    {feedback.content}
+        <CardContent className="w-full max-w-full box-border">
+          <div className="w-full max-w-full box-border">
+            <Table className="w-full max-w-full">
+              <TableHeader>
+                <TableRow>
+                  <TableHead>User</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead className="hidden md:table-cell">Content Preview</TableHead>
+                  <TableHead className="hidden lg:table-cell">Confidence</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="hidden md:table-cell">Date</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+
+              <TableBody>
+                {isLoading ? (
+                  Array.from({ length: 5 }).map((_, i) => (
+                    <TableRow key={i}>
+                      <TableCell><div className="w-32 h-4 bg-muted rounded animate-pulse" /></TableCell>
+                      <TableCell><div className="w-24 h-4 bg-muted rounded animate-pulse" /></TableCell>
+                      <TableCell className="hidden md:table-cell"><div className="w-40 h-4 bg-muted rounded animate-pulse" /></TableCell>
+                      <TableCell className="hidden lg:table-cell"><div className="w-16 h-4 bg-muted rounded animate-pulse" /></TableCell>
+                      <TableCell><div className="w-16 h-4 bg-muted rounded animate-pulse" /></TableCell>
+                      <TableCell className="hidden md:table-cell"><div className="w-20 h-4 bg-muted rounded animate-pulse" /></TableCell>
+                      <TableCell><div className="w-8 h-4 bg-muted rounded animate-pulse ml-auto" /></TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  feedbackData?.feedback.map((feedback: FeedbackLog) => (
+                    <TableRow key={feedback.id}>
+                      <TableCell>
+                        <div>
+                          <div className="font-medium">{feedback.user.displayName}</div>
+                          <div className="text-sm text-muted-foreground break-words break-all max-w-full">{feedback.user.email}</div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          {getTypeIcon(feedback.type)}
+                          {getTypeBadge(feedback.type)}
+                        </div>
+                      </TableCell>
+                      <TableCell className="hidden md:table-cell">
+                        <div className="max-w-full text-sm break-words">
+                          {feedback.content}
+                        </div>
+                      </TableCell>
+                      <TableCell className="hidden lg:table-cell">
+                        <div className="flex items-center gap-2">
+                          <div className="text-sm font-medium">{Math.round(feedback.confidence * 100)}%</div>
+                          <div className={`w-2 h-2 rounded-full ${
+                            feedback.confidence > 0.8 ? 'bg-green-500' :
+                              feedback.confidence > 0.6 ? 'bg-yellow-500' :
+                                'bg-red-500'
+                          }`} />
+                        </div>
+                      </TableCell>
+                      <TableCell>{getStatusBadge(feedback.status)}</TableCell>
+                      <TableCell className="hidden md:table-cell text-sm text-muted-foreground">
+                        {formatDate(feedback.createdAt)}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" className="h-8 w-8 p-0">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                            <Dialog>
+                              <DialogTrigger asChild>
+                                <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                                  <Eye className="mr-2 h-4 w-4" />
+                                  View Full Content
+                                </DropdownMenuItem>
+                              </DialogTrigger>
+                              <DialogContent className="max-w-2xl sm:max-w-3xl w-[95vw] sm:w-auto">
+                                <DialogHeader>
+                                  <DialogTitle className="flex items-center gap-2">
+                                    {getTypeIcon(feedback.type)}
+                                    Feedback Details
+                                  </DialogTitle>
+                                  <DialogDescription>
+                                    {feedback.type.replace('_', ' ')} from {feedback.user.displayName}
+                                  </DialogDescription>
+                                </DialogHeader>
+                                <div className="space-y-4">
+                                  <div>
+                                    <h4 className="font-medium mb-2">Content</h4>
+                                    <div className="p-4 bg-muted/50 rounded-lg text-sm break-words">
+                                      {feedback.content}
+                                    </div>
+                                  </div>
+                                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <div>
+                                      <h4 className="font-medium mb-1">Confidence Score</h4>
+                                      <p className="text-sm text-muted-foreground">
+                                        {Math.round(feedback.confidence * 100)}%
+                                      </p>
+                                    </div>
+                                    <div>
+                                      <h4 className="font-medium mb-1">Trade ID</h4>
+                                      <p className="text-sm text-muted-foreground font-mono">
+                                        {feedback.tradeId}
+                                      </p>
+                                    </div>
                                   </div>
                                 </div>
-                                <div className="grid grid-cols-2 gap-4">
-                                  <div>
-                                    <h4 className="font-medium mb-1">Confidence Score</h4>
-                                    <p className="text-sm text-muted-foreground">
-                                      {Math.round(feedback.confidence * 100)}%
-                                    </p>
-                                  </div>
-                                  <div>
-                                    <h4 className="font-medium mb-1">Trade ID</h4>
-                                    <p className="text-sm text-muted-foreground font-mono">
-                                      {feedback.tradeId}
-                                    </p>
-                                  </div>
-                                </div>
-                              </div>
-                            </DialogContent>
-                          </Dialog>
-                          <DropdownMenuSeparator />
-                          {feedback.status !== 'flagged' && (
-                            <DropdownMenuItem
-                              onClick={() => flagFeedbackMutation.mutate({ 
-                                feedbackId: feedback.id, 
-                                reason: 'Admin review' 
-                              })}
-                            >
-                              <Flag className="mr-2 h-4 w-4" />
-                              Flag for Review
-                            </DropdownMenuItem>
-                          )}
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
-                                <Trash2 className="mr-2 h-4 w-4" />
-                                Delete Feedback
+                              </DialogContent>
+                            </Dialog>
+                            <DropdownMenuSeparator />
+                            {feedback.status !== 'flagged' && (
+                              <DropdownMenuItem
+                                onClick={() => flagFeedbackMutation.mutate({
+                                  feedbackId: feedback.id,
+                                  reason: 'Admin review'
+                                })}
+                              >
+                                <Flag className="mr-2 h-4 w-4" />
+                                Flag for Review
                               </DropdownMenuItem>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>Delete Feedback</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  Are you sure you want to permanently delete this feedback? This action cannot be undone.
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                <AlertDialogAction
-                                  onClick={() => deleteFeedbackMutation.mutate(feedback.id)}
-                                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                                >
-                                  Delete
-                                </AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
+                            )}
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                                  <Trash2 className="mr-2 h-4 w-4" />
+                                  Delete Feedback
+                                </DropdownMenuItem>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Delete Feedback</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    Are you sure you want to permanently delete this feedback? This action cannot be undone.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                  <AlertDialogAction
+                                    onClick={() => deleteFeedbackMutation.mutate(feedback.id)}
+                                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                  >
+                                    Delete
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
 
           {/* Pagination */}
           {feedbackData?.pagination && (
-            <div className="flex items-center justify-between mt-4">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mt-4 w-full max-w-full box-border">
               <div className="text-sm text-muted-foreground">
                 Showing {((page - 1) * 20) + 1} to {Math.min(page * 20, feedbackData.pagination.totalCount)} of {feedbackData.pagination.totalCount} feedback entries
               </div>

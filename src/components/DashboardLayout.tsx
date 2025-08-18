@@ -60,11 +60,9 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         />
       )}
 
-      {/* Sidebar */}
+      {/* Sidebar (fixed, full height, nav scrolls, bottom pinned) */}
       <div
-        className={`fixed inset-y-0 left-0 z-50 w-64 bg-card border-r border-border transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:relative lg:flex-shrink-0 ${
-          sidebarOpen ? 'translate-x-0' : '-translate-x-full'
-        }`}
+        className={`${sidebarOpen ? 'block' : 'hidden'} lg:block fixed top-0 left-0 h-screen w-64 bg-card border-r border-border z-50 flex flex-col justify-between`}
       >
         <div className="flex items-center justify-between h-16 px-6 border-b border-border">
           <div className="flex items-center gap-3">
@@ -86,7 +84,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           </Button>
         </div>
 
-        <nav className="mt-6 px-3">
+        <nav className="mt-6 px-3 flex-1 overflow-y-auto">
           <ul className="space-y-1">
             {navigation.map((item) => {
               const Icon = item.icon
@@ -112,8 +110,8 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           </ul>
         </nav>
 
-        {/* Admin info at bottom */}
-        <div className="absolute bottom-0 left-0 right-0 p-3 border-t border-border">
+        {/* Admin info section (sticks to bottom via flex) */}
+        <div className="p-3 border-t border-border">
           <div className="flex items-center gap-3 px-3">
             <Shield className="h-4 w-4 text-primary flex-shrink-0" />
             <div className="flex-1 min-w-0">
@@ -128,9 +126,9 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         </div>
       </div>
 
-      {/* Main content */}
-      <div className="flex flex-col min-h-screen flex-1 lg:flex-1">
-        {/* Top navigation */}
+      {/* Main content (offset for fixed sidebar on lg, full height) */}
+      <div className="flex flex-col min-h-screen w-full flex-1 lg:flex-1 lg:ml-64 max-w-full">
+        {/* Top navigation (kept sticky as only sidebar requested to be static) */}
         <div className="sticky top-0 z-40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b border-border flex-shrink-0">
           <div className="flex items-center justify-between h-16 px-6">
             <Button
