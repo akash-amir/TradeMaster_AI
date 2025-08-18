@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { adminApi } from '@/lib/api'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -10,7 +10,23 @@ import { Separator } from '@/components/ui/separator'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useToast } from '@/hooks/use-toast'
 import { Save, Settings, Bell, Shield, Database, Mail } from 'lucide-react'
-import type { AdminSettings } from '@/types'
+
+// Local type for admin settings (remove if you add it to '@/types')
+interface AdminSettings {
+  allowNewRegistrations: boolean
+  maintenanceMode: boolean
+  maxFreeTrialDays: number
+  emailNotifications: {
+    newUsers: boolean
+    failedPayments: boolean
+    systemAlerts: boolean
+  }
+  apiLimits: {
+    free: number
+    premium: number
+    professional: number
+  }
+}
 
 export default function SettingsPage() {
   const { toast } = useToast()
@@ -38,7 +54,7 @@ export default function SettingsPage() {
   })
 
   // Update form data when settings load
-  React.useEffect(() => {
+  useEffect(() => {
     if (settings) {
       setFormData(settings)
     }

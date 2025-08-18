@@ -24,6 +24,40 @@ export default function OverviewPage() {
     queryFn: () => adminApi.getRevenueData('30d'),
   })
 
+  // Payment success percentage: (successful / total) * 100
+  const { data: paymentSuccessStats } = useQuery({
+    queryKey: ['supabase', 'payments', 'success_percentage'],
+    queryFn: async () => {
+      // Helper to count with fallback if table name differs
+      const countFrom = async (table: string, status?: string) => {
+        let q = (supabase as any)
+          .from(table)
+          .select('*', { count: 'exact', head: true })
+        if (status) q = q.eq('status', status)
+        const { count, error } = await q
+        if (error) throw error
+        return count ?? 0
+      }
+
+      let total = 0
+      let success = 0
+      try {
+        // Try plural 'payments'
+        total = await countFrom('payments')
+        success = await countFrom('payments', 'succeeded')
+      } catch (_) {
+        // Fallback to singular 'payment'
+        total = await countFrom('payment')
+        success = await countFrom('payment', 'succeeded')
+      }
+
+      const percentage = total > 0 ? (success / total) * 100 : 0
+      const failed = Math.max(total - success, 0)
+      return { total, success, failed, percentage }
+    },
+    staleTime: 60_000,
+  })
+
   // Active API keys (RPC preferred, fallback to SELECT count)
   const { data: activeApiKeysCount } = useQuery({
     queryKey: ['supabase', 'user_api_keys', 'active_count'],
@@ -234,11 +268,11 @@ export default function OverviewPage() {
         
         <StatCard
           title="Payment Success"
-          value={`${((stats?.payments.succeeded || 0) / (stats?.payments.total || 1) * 100).toFixed(1)}%`}
-          description={`${stats?.payments.failed || 0} failed payments`}
+          value={`${(paymentSuccessStats?.percentage ?? 0).toFixed(1)}%`}
+          description={`${paymentSuccessStats?.failed ?? 0} failed payments`}
           icon={CreditCard}
-          trend={stats?.payments.failed === 0 ? 'up' : 'down'}
-          trendValue={stats?.payments.failed === 0 ? 'All successful' : `${stats?.payments.failed} failures`}
+          trend={undefined}
+          trendValue={undefined}
         />
       </div>
 
