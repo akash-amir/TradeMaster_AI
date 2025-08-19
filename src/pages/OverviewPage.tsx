@@ -15,13 +15,104 @@ export default function OverviewPage() {
   })
 
   const { data: userGrowth, isLoading: userGrowthLoading } = useQuery({
-    queryKey: ['user-growth', '30d'],
-    queryFn: () => adminApi.getUserGrowthData('30d'),
+    queryKey: ['supabase', 'profiles', 'monthly_growth'],
+    queryFn: async () => {
+      // Preferred: SECURITY DEFINER RPC get_monthly_user_growth()
+      // Example SQL to create in Supabase:
+      // create or replace function public.get_monthly_user_growth()
+      // returns table(month date, count bigint)
+      // language sql security definer set search_path = public as $$
+      //   select date_trunc('month', created_at)::date as month, count(*)::bigint
+      //   from public.profiles
+      //   group by 1
+      //   order by 1;
+      // $$;
+      try {
+        const { data, error } = await (supabase as any).rpc('get_monthly_user_growth')
+        if (error) throw error
+        const mapped = (data || []).map((r: any) => ({
+          date: (r.month instanceof Date ? r.month.toISOString() : new Date(r.month).toISOString()),
+          users: Number(r.count ?? r.users ?? 0),
+        }))
+        if (mapped.length > 0) return mapped
+      } catch (_) {
+        // fall through to client-side aggregation
+      }
+
+      // Fallback: fetch last 12 months and aggregate client-side
+      const start = new Date()
+      start.setUTCFullYear(start.getUTCFullYear(), start.getUTCMonth() - 11, 1)
+      start.setUTCHours(0, 0, 0, 0)
+      const { data: rows, error: e2 } = await (supabase as any)
+        .from('profiles')
+        .select('created_at')
+        .gte('created_at', start.toISOString())
+      if (e2) throw e2
+
+      // Build a map for the last 12 months
+      const months: { date: Date; key: string; users: number }[] = []
+      const now = new Date()
+      for (let i = 11; i >= 0; i--) {
+        const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - i, 1))
+        const key = d.toISOString().slice(0, 7) // YYYY-MM
+        months.push({ date: d, key, users: 0 })
+      }
+      rows?.forEach((r: any) => {
+        const dt = new Date(r.created_at)
+        const key = new Date(Date.UTC(dt.getUTCFullYear(), dt.getUTCMonth(), 1)).toISOString().slice(0, 7)
+        const bucket = months.find(m => m.key === key)
+        if (bucket) bucket.users += 1
+      })
+      return months.map(m => ({ date: m.date.toISOString(), users: m.users }))
+    },
+    staleTime: 60_000,
   })
 
-  const { data: revenueData, isLoading: revenueLoading } = useQuery({
-    queryKey: ['revenue-data', '30d'],
-    queryFn: () => adminApi.getRevenueData('30d'),
+  const { data: monthlyRevenue, isLoading: monthlyRevenueLoading } = useQuery({
+    queryKey: ['supabase', 'subscription', 'monthly_revenue'],
+    queryFn: async () => {
+      // Preferred: SECURITY DEFINER RPC get_monthly_revenue()
+      // Should return rows like: { month: date, revenue: number }
+      try {
+        const { data, error } = await (supabase as any).rpc('get_monthly_revenue')
+        if (error) throw error
+        return (data || []).map((r: any) => ({
+          date: (r.month instanceof Date ? r.month.toISOString() : new Date(r.month).toISOString()),
+          revenue: Number(r.revenue ?? r.total ?? 0),
+        }))
+      } catch (_) {
+        // fall through to client-side aggregation
+      }
+
+      // Fallback: fetch last 12 months from subscription and aggregate client-side
+      const start = new Date()
+      start.setUTCFullYear(start.getUTCFullYear(), start.getUTCMonth() - 11, 1)
+      start.setUTCHours(0, 0, 0, 0)
+      const { data: rows, error } = await (supabase as any)
+        .from('subscription')
+        .select('created_at, amount, status')
+        .gte('created_at', start.toISOString())
+        .in('status', ['completed', 'active'])
+      if (error) throw error
+
+      // Build a map for the last 12 months
+      const months: { date: Date; key: string; revenue: number }[] = []
+      const now = new Date()
+      for (let i = 11; i >= 0; i--) {
+        const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - i, 1))
+        const key = d.toISOString().slice(0, 7) // YYYY-MM
+        months.push({ date: d, key, revenue: 0 })
+      }
+      ;(rows || []).forEach((r: any) => {
+        const dt = new Date(r.created_at)
+        const key = new Date(Date.UTC(dt.getUTCFullYear(), dt.getUTCMonth(), 1)).toISOString().slice(0, 7)
+        const bucket = months.find(m => m.key === key)
+        if (bucket) bucket.revenue += Number(r?.amount ?? 0)
+      })
+      return months.map(m => ({ date: m.date.toISOString(), revenue: m.revenue }))
+    },
+    staleTime: 60_000,
+    refetchInterval: 30_000,
   })
 
   // Payment success percentage: (successful / total) * 100
@@ -303,7 +394,7 @@ export default function OverviewPage() {
                   <XAxis 
                     dataKey="date" 
                     className="text-xs fill-muted-foreground"
-                    tickFormatter={(value) => new Date(value).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                    tickFormatter={(value) => new Date(value).toLocaleDateString('en-US', { month: 'short', year: '2-digit' })}
                   />
                   <YAxis className="text-xs fill-muted-foreground" />
                   <Tooltip 
@@ -330,15 +421,15 @@ export default function OverviewPage() {
         {/* Revenue Chart */}
         <Card>
           <CardHeader>
-            <CardTitle>Revenue Trends</CardTitle>
-            <CardDescription>Monthly recurring revenue</CardDescription>
+            <CardTitle>Monthly Revenue Trend</CardTitle>
+            <CardDescription>Total revenue per month (active & completed)</CardDescription>
           </CardHeader>
           <CardContent>
-            {revenueLoading ? (
+            {monthlyRevenueLoading ? (
               <Skeleton className="h-[300px] w-full" />
             ) : (
               <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={revenueData || []}>
+                <BarChart data={monthlyRevenue || []}>
                   <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                   <XAxis 
                     dataKey="date" 
