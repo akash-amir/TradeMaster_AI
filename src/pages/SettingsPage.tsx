@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { adminApi } from '@/lib/api'
+import { supabase } from '@/lib/supabase'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -34,7 +34,30 @@ export default function SettingsPage() {
 
   const { data: settings, isLoading } = useQuery({
     queryKey: ['admin-settings'],
-    queryFn: adminApi.getSettings,
+    queryFn: async () => {
+      const { data, error } = await (supabase as any).rpc('get_admin_settings')
+      if (error) throw error
+      // Fallback default if no row exists yet
+      if (!data) {
+        return {
+          allowNewRegistrations: true,
+          maintenanceMode: false,
+          maxFreeTrialDays: 14,
+          emailNotifications: { newUsers: true, failedPayments: true, systemAlerts: true },
+          apiLimits: { free: 100, premium: 1000, professional: 10000 },
+        }
+      }
+      // Map snake_case from DB to camelCase AdminSettings
+      return {
+        allowNewRegistrations: Boolean((data as any).allow_new_registrations),
+        maintenanceMode: Boolean((data as any).maintenance_mode),
+        maxFreeTrialDays: Number((data as any).max_free_trial_days ?? 14),
+        emailNotifications: (data as any).email_notifications ?? { newUsers: true, failedPayments: true, systemAlerts: true },
+        apiLimits: (data as any).api_limits ?? { free: 100, premium: 1000, professional: 10000 },
+      } as AdminSettings
+    },
+    staleTime: 60_000,
+    refetchOnWindowFocus: false,
   })
 
   const [formData, setFormData] = useState<AdminSettings>({
@@ -61,7 +84,16 @@ export default function SettingsPage() {
   }, [settings])
 
   const updateSettingsMutation = useMutation({
-    mutationFn: adminApi.updateSettings,
+    mutationFn: async (payload: AdminSettings) => {
+      const { error } = await (supabase as any).rpc('set_admin_settings', {
+        p_allow_new_registrations: payload.allowNewRegistrations,
+        p_maintenance_mode: payload.maintenanceMode,
+        p_max_free_trial_days: payload.maxFreeTrialDays,
+        p_email_notifications: payload.emailNotifications,
+        p_api_limits: payload.apiLimits,
+      })
+      if (error) throw error
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-settings'] })
       toast({
@@ -72,7 +104,7 @@ export default function SettingsPage() {
     onError: (error: any) => {
       toast({
         title: 'Error',
-        description: error.response?.data?.message || 'Failed to update settings',
+        description: error.message || 'Failed to update settings',
         variant: 'destructive',
       })
     },

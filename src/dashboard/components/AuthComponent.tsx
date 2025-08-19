@@ -54,6 +54,39 @@ export default function AuthComponent() {
     e.preventDefault();
     setLoading(true);
 
+    try {
+      // Check platform settings before allowing registration
+      const { data: settingsData, error: settingsError } = await (supabase as any).rpc('get_admin_settings');
+      if (settingsError) {
+        console.warn('Settings check failed, blocking signup:', settingsError);
+        toast({
+          title: 'Registration Unavailable',
+          description: 'Unable to verify registration settings. Please try again later.',
+          variant: 'destructive',
+        });
+        setLoading(false);
+        return;
+      }
+      if (settingsData && settingsData.allow_new_registrations === false) {
+        toast({
+          title: 'Registration Disabled',
+          description: 'New user registrations are currently disabled by the administrator.',
+          variant: 'destructive',
+        });
+        setLoading(false);
+        return;
+      }
+    } catch (err) {
+      console.warn('Settings RPC error, blocking:', err);
+      toast({
+        title: 'Registration Unavailable',
+        description: 'Unable to verify registration settings. Please try again later.',
+        variant: 'destructive',
+      });
+      setLoading(false);
+      return;
+    }
+
     if (formData.password !== formData.confirmPassword) {
       toast({
         title: "Password Mismatch",
