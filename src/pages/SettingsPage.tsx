@@ -130,7 +130,7 @@ export default function SettingsPage() {
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-3xl font-bold text-foreground">Settings</h1>
           <p className="text-muted-foreground">Configure admin panel and system settings</p>
@@ -138,7 +138,7 @@ export default function SettingsPage() {
         <Button 
           onClick={handleSave} 
           disabled={updateSettingsMutation.isPending}
-          className="gap-2"
+          className="gap-2 w-full sm:w-auto"
         >
           <Save className="h-4 w-4" />
           {updateSettingsMutation.isPending ? 'Saving...' : 'Save Changes'}
@@ -146,7 +146,7 @@ export default function SettingsPage() {
       </div>
 
       <Tabs defaultValue="general" className="space-y-6">
-        <TabsList>
+        <TabsList className="flex flex-wrap gap-2">
           <TabsTrigger value="general" className="gap-2">
             <Settings className="h-4 w-4" />
             General
@@ -172,47 +172,54 @@ export default function SettingsPage() {
               <CardDescription>Configure basic platform settings</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label className="text-base">Allow New Registrations</Label>
-                  <div className="text-sm text-muted-foreground">
-                    Enable or disable new user sign-ups
+              <div className="grid gap-6 md:grid-cols-2">
+                {/* Allow New Registrations */}
+                <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between p-0">
+                  <div className="space-y-0.5">
+                    <Label className="text-base">Allow New Registrations</Label>
+                    <div className="text-sm text-muted-foreground">
+                      Enable or disable new user sign-ups
+                    </div>
+                  </div>
+                  <div className="md:pl-4">
+                    <Switch
+                      checked={formData.allowNewRegistrations}
+                      onCheckedChange={(checked) => handleInputChange('allowNewRegistrations', checked)}
+                    />
                   </div>
                 </div>
-                <Switch
-                  checked={formData.allowNewRegistrations}
-                  onCheckedChange={(checked) => handleInputChange('allowNewRegistrations', checked)}
-                />
-              </div>
 
-              <Separator />
-
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label className="text-base">Maintenance Mode</Label>
-                  <div className="text-sm text-muted-foreground">
-                    Put the platform in maintenance mode
+                {/* Maintenance Mode */}
+                <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between p-0">
+                  <div className="space-y-0.5">
+                    <Label className="text-base">Maintenance Mode</Label>
+                    <div className="text-sm text-muted-foreground">
+                      Put the platform in maintenance mode
+                    </div>
+                  </div>
+                  <div className="md:pl-4">
+                    <Switch
+                      checked={formData.maintenanceMode}
+                      onCheckedChange={(checked) => handleInputChange('maintenanceMode', checked)}
+                    />
                   </div>
                 </div>
-                <Switch
-                  checked={formData.maintenanceMode}
-                  onCheckedChange={(checked) => handleInputChange('maintenanceMode', checked)}
-                />
-              </div>
 
-              <Separator />
-
-              <div className="space-y-2">
-                <Label htmlFor="trialDays">Free Trial Duration (days)</Label>
-                <Input
-                  id="trialDays"
-                  type="number"
-                  value={formData.maxFreeTrialDays}
-                  onChange={(e) => handleInputChange('maxFreeTrialDays', parseInt(e.target.value))}
-                  className="w-32"
-                />
-                <div className="text-sm text-muted-foreground">
-                  Number of days for free trial period
+                {/* Free Trial Duration */}
+                <div className="space-y-2 md:col-span-2">
+                  <Label htmlFor="trialDays">Free Trial Duration (days)</Label>
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:gap-4">
+                    <Input
+                      id="trialDays"
+                      type="number"
+                      value={formData.maxFreeTrialDays}
+                      onChange={(e) => handleInputChange('maxFreeTrialDays', parseInt(e.target.value))}
+                      className="w-full sm:max-w-xs md:max-w-[12rem]"
+                    />
+                    <div className="text-sm text-muted-foreground mt-2 sm:mt-0">
+                      Number of days for free trial period
+                    </div>
+                  </div>
                 </div>
               </div>
             </CardContent>
@@ -226,7 +233,7 @@ export default function SettingsPage() {
               <CardDescription>Configure admin email notifications</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="space-y-0.5">
                   <Label className="text-base">New User Registrations</Label>
                   <div className="text-sm text-muted-foreground">
@@ -243,7 +250,7 @@ export default function SettingsPage() {
 
               <Separator />
 
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="space-y-0.5">
                   <Label className="text-base">Failed Payments</Label>
                   <div className="text-sm text-muted-foreground">
@@ -260,7 +267,7 @@ export default function SettingsPage() {
 
               <Separator />
 
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="space-y-0.5">
                   <Label className="text-base">System Alerts</Label>
                   <div className="text-sm text-muted-foreground">
@@ -295,6 +302,7 @@ export default function SettingsPage() {
                     onChange={(e) => 
                       handleNestedInputChange('apiLimits', 'free', parseInt(e.target.value))
                     }
+                    className="w-full sm:w-32"
                   />
                   <div className="text-sm text-muted-foreground">
                     Requests per month
@@ -310,6 +318,7 @@ export default function SettingsPage() {
                     onChange={(e) => 
                       handleNestedInputChange('apiLimits', 'premium', parseInt(e.target.value))
                     }
+                    className="w-full sm:w-32"
                   />
                   <div className="text-sm text-muted-foreground">
                     Requests per month
@@ -325,6 +334,7 @@ export default function SettingsPage() {
                     onChange={(e) => 
                       handleNestedInputChange('apiLimits', 'professional', parseInt(e.target.value))
                     }
+                    className="w-full sm:w-32"
                   />
                   <div className="text-sm text-muted-foreground">
                     Requests per month
@@ -368,7 +378,7 @@ export default function SettingsPage() {
                     Configure session timeout and security
                   </p>
                   <div className="space-y-3">
-                    <div className="flex items-center justify-between">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                       <Label>Auto-logout after inactivity</Label>
                       <Switch defaultChecked />
                     </div>
@@ -378,7 +388,7 @@ export default function SettingsPage() {
                         id="sessionTimeout"
                         type="number"
                         defaultValue={60}
-                        className="w-32"
+                        className="w-full sm:w-32"
                       />
                     </div>
                   </div>
